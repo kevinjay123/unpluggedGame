@@ -68,6 +68,7 @@ const els = {
   startButton: document.querySelector("#startButton"),
   nextButton: document.querySelector("#nextButton"),
   resetButton: document.querySelector("#resetButton"),
+  fullscreenButton: document.querySelector("#fullscreenButton"),
   resultDialog: document.querySelector("#resultDialog"),
   resultTitle: document.querySelector("#resultTitle"),
   resultSummary: document.querySelector("#resultSummary"),
@@ -77,6 +78,33 @@ const els = {
 
 function byPlayer(id, suffix) {
   return document.querySelector(`#${id}${suffix}`);
+}
+
+async function toggleFullscreen() {
+  document.body.classList.add("play-mode");
+  try {
+    if (document.fullscreenElement) {
+      await document.exitFullscreen();
+      return;
+    }
+    await document.documentElement.requestFullscreen({ navigationUI: "hide" });
+  } catch {
+    byPlayer("left", "State").textContent = "Safari 若無法全螢幕，請加入主畫面後開啟";
+    byPlayer("right", "State").textContent = "Safari 若無法全螢幕，請加入主畫面後開啟";
+  } finally {
+    syncFullscreenButton();
+  }
+}
+
+function syncFullscreenButton() {
+  const active = Boolean(document.fullscreenElement) || document.body.classList.contains("play-mode");
+  els.fullscreenButton.textContent = active ? "退出全螢幕" : "全螢幕";
+}
+
+function exitPlayMode() {
+  document.body.classList.remove("play-mode");
+  if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+  syncFullscreenButton();
 }
 
 function shuffle(items) {
@@ -891,6 +919,23 @@ function resetGame() {
 els.startButton.addEventListener("click", renderRound);
 els.nextButton.addEventListener("click", nextRound);
 els.resetButton.addEventListener("click", resetGame);
+els.fullscreenButton.addEventListener("click", () => {
+  if (document.body.classList.contains("play-mode") || document.fullscreenElement) {
+    exitPlayMode();
+  } else {
+    toggleFullscreen();
+  }
+});
+document.addEventListener("fullscreenchange", syncFullscreenButton);
+["gesturestart", "gesturechange", "gestureend"].forEach((eventName) => {
+  document.addEventListener(
+    eventName,
+    (event) => {
+      if (document.body.classList.contains("play-mode")) event.preventDefault();
+    },
+    { passive: false },
+  );
+});
 els.closeResultButton.addEventListener("click", () => {
   els.resultDialog.close();
   state.roundIndex >= TOTAL_ROUNDS - 1 ? resetGame() : nextRound();
