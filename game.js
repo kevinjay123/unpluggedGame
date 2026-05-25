@@ -364,6 +364,8 @@ function renderHashBoard(board, player) {
     board.append(tray);
   }
 
+  const bucketGrid = document.createElement("div");
+  bucketGrid.className = "bucket-grid";
   playerData.groups.forEach((group) => {
     const open = playerState.activeBucket === group.key;
     const bucketSolved = playerState.path.includes(`${group.key}:${state.round.target}`);
@@ -380,8 +382,9 @@ function renderHashBoard(board, player) {
     if (open) bucket.classList.add("open");
     if (bucketSolved) bucket.classList.add("correct");
     if (playerState.path.includes(group.key) && group.key !== state.round.targetGroup.key) bucket.classList.add("wrong");
-    board.append(bucket);
+    bucketGrid.append(bucket);
   });
+  board.append(bucketGrid);
 }
 
 function colorSwatch(group) {
