@@ -271,8 +271,8 @@ h1 {
 }
 
 .board.tree {
-  grid-template-columns: repeat(16, minmax(34px, 1fr));
-  grid-template-rows: repeat(5, minmax(54px, 1fr));
+  grid-template-columns: repeat(15, minmax(30px, 1fr));
+  grid-template-rows: repeat(4, minmax(60px, 1fr));
   align-items: stretch;
 }
 
@@ -508,6 +508,13 @@ h1 {
   font-weight: 1000;
 }
 
+.bucket-items button.found {
+  border-color: var(--mint);
+  background: #dcfff2;
+  box-shadow: 0 0 0 4px rgba(11, 167, 123, 0.22);
+  transform: scale(1.08);
+}
+
 .tree-node {
   min-height: 52px;
   padding: 4px;
@@ -517,6 +524,12 @@ h1 {
 .tree-node.covered {
   border-style: dashed;
   background: #e8eeec;
+  box-shadow: none;
+}
+
+.tree-node.locked {
+  border-style: dashed;
+  opacity: 0.38;
   box-shadow: none;
 }
 
@@ -967,8 +980,8 @@ button:disabled {
   }
 
   .board.tree {
-    grid-template-columns: repeat(16, minmax(14px, 1fr));
-    grid-template-rows: repeat(5, minmax(30px, 1fr));
+    grid-template-columns: repeat(15, minmax(16px, 1fr));
+    grid-template-rows: repeat(4, minmax(36px, 1fr));
     gap: 3px;
     overflow: hidden;
   }

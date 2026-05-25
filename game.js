@@ -3,24 +3,24 @@ const TOTAL_ROUNDS = 10;
 const players = ["left", "right"];
 const playerNames = { left: "左玩家", right: "右玩家" };
 const HASH_GROUPS = [
-  { key: "red", name: "紅色入口", color: "#e03131", icon: "紅" },
-  { key: "orange", name: "橘色入口", color: "#f08c00", icon: "橘" },
-  { key: "yellow", name: "黃色入口", color: "#f2c94c", icon: "黃" },
-  { key: "lime", name: "萊姆入口", color: "#82c91e", icon: "萊" },
-  { key: "green", name: "綠色入口", color: "#2f9e44", icon: "綠" },
-  { key: "mint", name: "薄荷入口", color: "#0ca678", icon: "薄" },
-  { key: "teal", name: "藍綠入口", color: "#099268", icon: "藍綠" },
-  { key: "cyan", name: "青色入口", color: "#1098ad", icon: "青" },
-  { key: "sky", name: "天空入口", color: "#228be6", icon: "天" },
-  { key: "blue", name: "藍色入口", color: "#4263eb", icon: "藍" },
-  { key: "indigo", name: "靛色入口", color: "#5c7cfa", icon: "靛" },
-  { key: "violet", name: "紫色入口", color: "#7048e8", icon: "紫" },
-  { key: "grape", name: "葡萄入口", color: "#9c36b5", icon: "葡" },
-  { key: "pink", name: "粉色入口", color: "#d6336c", icon: "粉" },
-  { key: "rose", name: "玫瑰入口", color: "#f06595", icon: "玫" },
-  { key: "brown", name: "棕色入口", color: "#8d6e63", icon: "棕" },
-  { key: "gray", name: "灰色入口", color: "#868e96", icon: "灰" },
-  { key: "black", name: "黑色入口", color: "#212529", icon: "黑" },
+  { key: "crimson", name: "深紅入口", color: "#d00000", icon: "深紅" },
+  { key: "tangerine", name: "橘橙入口", color: "#ff7a00", icon: "橘橙" },
+  { key: "gold", name: "金黃入口", color: "#ffd60a", icon: "金黃" },
+  { key: "lime", name: "亮綠入口", color: "#70e000", icon: "亮綠" },
+  { key: "emerald", name: "翡翠入口", color: "#008f5a", icon: "翡翠" },
+  { key: "aqua", name: "水藍入口", color: "#00d4ff", icon: "水藍" },
+  { key: "azure", name: "鮮藍入口", color: "#0066ff", icon: "鮮藍" },
+  { key: "navy", name: "深藍入口", color: "#001d6e", icon: "深藍" },
+  { key: "violet", name: "紫羅蘭入口", color: "#7b2cbf", icon: "紫羅蘭" },
+  { key: "magenta", name: "桃紫入口", color: "#ff00a8", icon: "桃紫" },
+  { key: "bubblegum", name: "亮粉入口", color: "#ff8fab", icon: "亮粉" },
+  { key: "chocolate", name: "巧克力入口", color: "#6f4e37", icon: "巧克力" },
+  { key: "sand", name: "沙黃入口", color: "#c2a83e", icon: "沙黃" },
+  { key: "slate", name: "石板入口", color: "#607d8b", icon: "石板" },
+  { key: "black", name: "黑色入口", color: "#111111", icon: "黑" },
+  { key: "white", name: "白色入口", color: "#f8f9fa", icon: "白" },
+  { key: "maroon", name: "酒紅入口", color: "#800020", icon: "酒紅" },
+  { key: "mint", name: "薄荷入口", color: "#3fffb0", icon: "薄荷" },
 ];
 
 const roundTypes = [
@@ -151,7 +151,7 @@ function buildRound(roundIndex) {
   return {
     type,
     target,
-    playerData: makePlayerData(() => ({ tree: makeTreeData(target, 24) })),
+    playerData: makePlayerData(() => ({ tree: makeTreeData(target, 15) })),
     mission: `沿著分岔路找到 ${target}`,
   };
 }
@@ -245,7 +245,7 @@ function renderShell() {
 
 function renderRound() {
   state.round = buildRound(state.roundIndex);
-  state.secondsLeft = state.round.type.id === "binary" ? 40 : ROUND_SECONDS;
+  state.secondsLeft = getRoundSeconds(state.round.type.id);
   state.running = true;
   players.forEach(initPlayerRound);
 
@@ -273,6 +273,12 @@ function renderBoard(player) {
   if (type.id === "binary") renderBinaryBoard(board, player);
   if (type.id === "hash") renderHashBoard(board, player);
   if (type.id === "tree") renderTreeBoard(board, player);
+}
+
+function getRoundSeconds(typeId) {
+  if (typeId === "binary") return 40;
+  if (typeId === "tree") return 60;
+  return ROUND_SECONDS;
 }
 
 function makeButton(className, label, onClick) {
@@ -353,7 +359,10 @@ function renderHashBoard(board, player) {
     const tray = document.createElement("div");
     tray.className = "bucket-tray";
     tray.innerHTML = `${colorSwatch(activeGroup)}<div class="bucket-items">${playerData.groupItems[activeGroup.key]
-      .map((item) => `<button type="button" data-item="${item}">${item}</button>`)
+      .map((item) => {
+        const found = playerState.foundHashItem === `${activeGroup.key}:${item}`;
+        return `<button class="${found ? "found" : ""}" type="button" data-item="${item}">${item}</button>`;
+      })
       .join("")}</div>`;
     tray.querySelectorAll("[data-item]").forEach((itemButton) => {
       itemButton.addEventListener("pointerdown", (event) => {
@@ -368,7 +377,6 @@ function renderHashBoard(board, player) {
   bucketGrid.className = "bucket-grid";
   playerData.groups.forEach((group) => {
     const open = playerState.activeBucket === group.key;
-    const bucketSolved = playerState.path.includes(`${group.key}:${state.round.target}`);
     const bucket = document.createElement("div");
     bucket.className = "bucket";
     bucket.setAttribute("role", "button");
@@ -380,8 +388,6 @@ function renderHashBoard(board, player) {
       if (event.key === "Enter" || event.key === " ") openHashBucket(player, group.key);
     });
     if (open) bucket.classList.add("open");
-    if (bucketSolved) bucket.classList.add("correct");
-    if (playerState.path.includes(group.key) && group.key !== state.round.targetGroup.key) bucket.classList.add("wrong");
     bucketGrid.append(bucket);
   });
   board.append(bucketGrid);
@@ -396,25 +402,31 @@ function renderTreeBoard(board, player) {
   const tree = state.round.playerData[player].tree;
   const playerState = state.playerRound[player];
   tree.nodes.forEach((node) => {
-    const available = isTreeNodeAvailable(player, node.id);
-    const seen = playerState.path.includes(node.id);
-    const label = available || seen ? `${node.value}<small>${nodeHint(node)}</small>` : `?<small>蓋牌</small>`;
+    const visible = isTreeNodeVisible(player, node);
+    const selected = playerState.path.includes(node.id);
+    const locked = visible && !selected && isTreeNodeLocked(player, node);
+    const label = visible ? `${node.value}<small>${nodeHint(node)}</small>` : `?<small>蓋牌</small>`;
     const item = makeButton("tree-node", label, () => chooseTree(player, node.id));
     item.style.gridColumn = `${treeColumn(node)} / span 1`;
     item.style.gridRow = `${node.depth + 1}`;
-    if (!available && !seen) {
+    if (!visible) {
       item.disabled = true;
       item.classList.add("covered");
     }
-    if (seen) item.classList.add(node.value === state.round.target ? "correct" : "visited");
+    if (locked) {
+      item.disabled = true;
+      item.classList.add("locked");
+    }
+    if (selected) item.classList.add(node.value === state.round.target ? "correct" : "visited");
     board.append(item);
   });
 }
 
 function treeColumn(node) {
-  const columns = 16;
-  const slots = 2 ** node.depth;
-  return Math.max(1, Math.min(columns, Math.round(((node.position + 0.5) * columns) / slots)));
+  const columns = 15;
+  const maxDepth = 3;
+  const spacing = 2 ** (maxDepth - node.depth);
+  return Math.max(1, Math.min(columns, (2 * node.position + 1) * spacing));
 }
 
 function canChoose(player) {
@@ -602,12 +614,8 @@ function openHashBucket(player, key) {
   if (round.activeBucket === key) return;
   countStep(player);
   round.activeBucket = key;
-  if (key !== state.round.targetGroup.key) {
-    round.path.push(key);
-    miss(player, "分類不對，換一個入口");
-  } else {
-    byPlayer(player, "State").textContent = "入口對了，點寶物";
-  }
+  round.path.push(key);
+  byPlayer(player, "State").textContent = "看看這個色塊裡有沒有寶物";
   renderBoard(player);
 }
 
@@ -618,53 +626,75 @@ function chooseHashItem(player, key, item) {
   if (round.path.includes(marker)) return;
   countStep(player);
   round.path.push(marker);
-  key === state.round.targetGroup.key && item === state.round.target
-    ? solve(player)
-    : miss(player, "寶物編號不對");
+  if (key === state.round.targetGroup.key && item === state.round.target) {
+    round.foundHashItem = marker;
+    renderBoard(player);
+    setTimeout(() => {
+      if (state.running && !round.solved) solve(player);
+    }, 450);
+    return;
+  }
+  guide(player, "不是這個寶物，繼續找");
   renderBoard(player);
 }
 
 function chooseTree(player, nodeIndex) {
   if (!canChoose(player)) return;
-  if (!isTreeNodeAvailable(player, nodeIndex)) return;
   const round = state.playerRound[player];
-  if (round.path.includes(nodeIndex)) return;
-  countStep(player);
-  round.path.push(nodeIndex);
   const tree = state.round.playerData[player].tree;
   const node = tree.nodes.find((item) => item.id === nodeIndex);
+  if (!node || !isTreeNodeVisible(player, node) || isTreeNodeLocked(player, node)) return;
+
+  if (round.path.includes(nodeIndex)) {
+    closeTreePathFrom(player, nodeIndex);
+    guide(player, "已關閉這條路，可以回頭重選");
+    renderBoard(player);
+    return;
+  }
+
+  countStep(player);
+  round.path.push(nodeIndex);
   if (node.value === state.round.target) {
     solve(player);
-  } else if (!isTreeChoiceOnSearchPath(player, node)) {
-    miss(player, "方向不對，回到已翻開的分岔再試");
   } else {
-    revealTreeChildren(player, node);
-    guide(player, node.value < state.round.target ? "目標比較大，翻右邊" : "目標比較小，翻左邊");
+    guide(player, node.value < state.round.target ? "目標比較大，繼續往下找" : "目標比較小，繼續往下找");
   }
   renderBoard(player);
 }
 
-function isTreeNodeAvailable(player, nodeIndex) {
+function isTreeNodeVisible(player, node) {
   const round = state.playerRound[player];
-  return round.treeAvailable.includes(nodeIndex);
+  return node.parentId === null || round.path.includes(node.parentId);
 }
 
-function isTreeChoiceOnSearchPath(player, node) {
-  if (node.parentId === null) return true;
+function isTreeNodeLocked(player, node) {
+  if (node.parentId === null) return false;
+  const selectedSibling = getSelectedChildId(player, node.parentId);
+  return selectedSibling !== null && selectedSibling !== node.id;
+}
+
+function getSelectedChildId(player, parentId) {
   const tree = state.round.playerData[player].tree;
-  const parent = tree.nodes.find((item) => item.id === node.parentId);
-  if (!parent || !state.playerRound[player].path.includes(parent.id)) return false;
-  const correctChildId = state.round.target < parent.value ? parent.leftId : parent.rightId;
-  return node.id === correctChildId;
+  const parent = tree.nodes.find((item) => item.id === parentId);
+  if (!parent) return null;
+  const round = state.playerRound[player];
+  return [parent.leftId, parent.rightId].find((childId) => childId !== null && round.path.includes(childId)) ?? null;
 }
 
-function revealTreeChildren(player, node) {
-  const round = state.playerRound[player];
-  [node.leftId, node.rightId].forEach((childId) => {
-    if (childId !== null && !round.treeAvailable.includes(childId)) {
-      round.treeAvailable.push(childId);
-    }
-  });
+function closeTreePathFrom(player, nodeId) {
+  const tree = state.round.playerData[player].tree;
+  const closeIds = new Set([nodeId]);
+  let changed = true;
+  while (changed) {
+    changed = false;
+    tree.nodes.forEach((node) => {
+      if (node.parentId !== null && closeIds.has(node.parentId) && !closeIds.has(node.id)) {
+        closeIds.add(node.id);
+        changed = true;
+      }
+    });
+  }
+  state.playerRound[player].path = state.playerRound[player].path.filter((id) => !closeIds.has(id));
 }
 
 function nodeHint(node) {
