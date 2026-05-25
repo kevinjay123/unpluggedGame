@@ -46,7 +46,23 @@ const roundTypes = [
   },
 ];
 
+const arcadeGames = ["image", "rescue", "bits", "image", "rescue", "bits"];
+const imagePatterns = [
+  { name: "鴨子", rows: ["001100", "011110", "111101", "111111", "011110", "001100"] },
+  { name: "烏龜", rows: ["011110", "111111", "101101", "111111", "011110", "100001"] },
+  { name: "星星", rows: ["001000", "101010", "011100", "111110", "011100", "010100"] },
+  { name: "愛心", rows: ["010010", "111111", "111111", "011110", "001100", "000000"] },
+  { name: "房子", rows: ["001100", "011110", "111111", "101101", "101101", "111111"] },
+  { name: "魚", rows: ["001100", "011110", "111101", "111110", "011100", "001010"] },
+  { name: "船", rows: ["001000", "001100", "111110", "011110", "001100", "000000"] },
+  { name: "樹", rows: ["001100", "011110", "111111", "001100", "001100", "011110"] },
+  { name: "笑臉", rows: ["011110", "100001", "101101", "100001", "101101", "011110"] },
+  { name: "鑽石", rows: ["001100", "011110", "111111", "111111", "011110", "001100"] },
+];
+const directions = ["up", "right", "down", "left"];
+
 const state = {
+  mode: "home",
   roundIndex: 0,
   secondsLeft: ROUND_SECONDS,
   timerId: null,
@@ -57,9 +73,13 @@ const state = {
   playerRound: {},
   history: [],
   sortDrags: new Map(),
+  arcade: null,
 };
 
 const els = {
+  homeMenu: document.querySelector("#homeMenu"),
+  treasureModeButton: document.querySelector("#treasureModeButton"),
+  arcadeModeButton: document.querySelector("#arcadeModeButton"),
   roundLabel: document.querySelector("#roundLabel"),
   missionText: document.querySelector("#missionText"),
   methodText: document.querySelector("#methodText"),
@@ -68,6 +88,7 @@ const els = {
   startButton: document.querySelector("#startButton"),
   nextButton: document.querySelector("#nextButton"),
   resetButton: document.querySelector("#resetButton"),
+  homeButton: document.querySelector("#homeButton"),
   fullscreenButton: document.querySelector("#fullscreenButton"),
   resultDialog: document.querySelector("#resultDialog"),
   resultTitle: document.querySelector("#resultTitle"),
@@ -78,6 +99,51 @@ const els = {
 
 function byPlayer(id, suffix) {
   return document.querySelector(`#${id}${suffix}`);
+}
+
+function showHome() {
+  clearInterval(state.timerId);
+  cancelAllSortDrags();
+  state.mode = "home";
+  state.running = false;
+  state.arcade = null;
+  els.homeMenu.hidden = false;
+  document.body.classList.add("home-active");
+  els.startButton.disabled = true;
+  els.nextButton.disabled = true;
+  els.missionText.textContent = "選擇遊戲模式";
+  els.methodText.textContent = "首頁";
+  els.roundLabel.textContent = "Home";
+  els.timerText.textContent = "--";
+}
+
+function enterGameShell() {
+  els.homeMenu.hidden = true;
+  document.body.classList.remove("home-active");
+}
+
+function startTreasureMode() {
+  enterGameShell();
+  state.mode = "treasure";
+  resetGame();
+}
+
+function startArcadeMode() {
+  enterGameShell();
+  clearInterval(state.timerId);
+  cancelAllSortDrags();
+  state.mode = "arcade";
+  state.roundIndex = 0;
+  state.secondsLeft = 60;
+  state.running = true;
+  state.scores = { left: 0, right: 0 };
+  state.streaks = { left: 0, right: 0 };
+  state.history = [];
+  state.arcade = { index: 0, player: {} };
+  els.startButton.disabled = true;
+  els.nextButton.disabled = false;
+  els.closeResultButton.textContent = "下一回合";
+  renderArcadeRound();
 }
 
 async function toggleFullscreen() {
@@ -767,7 +833,10 @@ function startTimer() {
   state.timerId = setInterval(() => {
     state.secondsLeft -= 1;
     els.timerText.textContent = state.secondsLeft;
-    if (state.secondsLeft <= 0) endRound();
+    if (state.secondsLeft <= 0) {
+      if (state.mode === "arcade") endArcadeRound();
+      else endRound();
+    }
   }, 1000);
 }
 
@@ -785,6 +854,280 @@ function endRound() {
   recordRound();
   showRoundResult();
   els.nextButton.disabled = state.roundIndex >= TOTAL_ROUNDS - 1;
+}
+
+function renderArcadeRound() {
+  const gameId = arcadeGames[state.arcade.index];
+  state.secondsLeft = 60;
+  state.running = true;
+  state.arcade.player = makePlayerData(() => buildArcadePlayer(gameId));
+  els.roundLabel.textContent = `Game ${state.arcade.index + 1} / ${arcadeGames.length}`;
+  els.methodText.textContent = arcadeTitle(gameId);
+  els.missionText.textContent = arcadeMission(gameId);
+  els.timerText.textContent = state.secondsLeft;
+  els.startButton.disabled = true;
+  els.nextButton.disabled = state.arcade.index >= arcadeGames.length - 1;
+  players.forEach((player) => {
+    byPlayer(player, "Score").textContent = state.scores[player];
+    byPlayer(player, "Streak").textContent = `完成 ${state.arcade.index} / ${arcadeGames.length}`;
+    byPlayer(player, "Steps").textContent = "步數 0";
+    byPlayer(player, "State").textContent = "開始";
+    const board = byPlayer(player, "Board");
+    board.className = `board arcade ${gameId}`;
+    renderArcadeBoard(player);
+  });
+  startTimer();
+}
+
+function buildArcadePlayer(gameId) {
+  if (gameId === "image") {
+    const pattern = sample(imagePatterns);
+    return { gameId, pattern, grid: Array.from({ length: 6 }, () => Array(6).fill(0)), row: 0, steps: 0, solved: false };
+  }
+  if (gameId === "rescue") return makeRescueState();
+  return { gameId, questions: shuffle([...Array(15)].map((_, index) => index + 1)).slice(0, 5), index: 0, lights: [0, 0, 0, 0], steps: 0, solved: false };
+}
+
+function arcadeTitle(gameId) {
+  return { image: "Image Representation", rescue: "Rescue Mission", bits: "How Binary Digits Work" }[gameId];
+}
+
+function arcadeMission(gameId) {
+  if (gameId === "image") return "依照 0/1 題目完成 6x6 黑白圖";
+  if (gameId === "rescue") return "控制機器人回家";
+  return "點亮 8、4、2、1";
+}
+
+function renderArcadeBoard(player) {
+  const data = state.arcade.player[player];
+  const board = byPlayer(player, "Board");
+  board.innerHTML = "";
+  if (data.gameId === "image") renderImageGame(board, player, data);
+  if (data.gameId === "rescue") renderRescueGame(board, player, data);
+  if (data.gameId === "bits") renderBitsGame(board, player, data);
+}
+
+function renderImageGame(board, player, data) {
+  const prompt = document.createElement("div");
+  prompt.className = "arcade-helper";
+  prompt.innerHTML = data.solved ? `<strong>${data.pattern.name} 完成</strong>` : `<strong>第 ${data.row + 1} 行：${data.pattern.rows[data.row]}</strong>`;
+  board.append(prompt);
+  const grid = document.createElement("div");
+  grid.className = "pixel-grid";
+  data.grid.forEach((row, rowIndex) => {
+    row.forEach((value, colIndex) => {
+      const cell = document.createElement("button");
+      cell.type = "button";
+      cell.className = `pixel-cell ${value ? "on" : "off"}`;
+      cell.textContent = value;
+      cell.disabled = data.solved || rowIndex !== data.row;
+      if (rowIndex < data.row) cell.classList.add("done");
+      cell.addEventListener("pointerdown", () => togglePixel(player, rowIndex, colIndex));
+      grid.append(cell);
+    });
+  });
+  board.append(grid);
+}
+
+function togglePixel(player, row, col) {
+  const data = state.arcade.player[player];
+  if (!state.running || data.solved || row !== data.row) return;
+  data.grid[row][col] = data.grid[row][col] ? 0 : 1;
+  data.steps += 1;
+  byPlayer(player, "Steps").textContent = `步數 ${data.steps}`;
+  if (data.grid[row].join("") === data.pattern.rows[row]) {
+    data.row += 1;
+    if (data.row >= 6) solveArcadePlayer(player);
+  }
+  renderArcadeBoard(player);
+}
+
+function makeRescueState() {
+  const size = 10;
+  const startOptions = [
+    { r: 0, c: 0 },
+    { r: 0, c: size - 1 },
+    { r: size - 1, c: 0 },
+    { r: size - 1, c: size - 1 },
+  ];
+  const robot = sample(startOptions);
+  let home = sample(startOptions.filter((spot) => Math.abs(spot.r - robot.r) + Math.abs(spot.c - robot.c) >= size + 4));
+  if (!home) {
+    home = { r: Math.floor(Math.random() * size), c: Math.floor(Math.random() * size) };
+    while (home.r === robot.r && home.c === robot.c) home = { r: Math.floor(Math.random() * size), c: Math.floor(Math.random() * size) };
+  }
+  let walls = new Set();
+  do {
+    walls = new Set();
+    while (walls.size < 22) {
+      const r = Math.floor(Math.random() * size);
+      const c = Math.floor(Math.random() * size);
+      if ((r === robot.r && c === robot.c) || (r === home.r && c === home.c)) continue;
+      walls.add(`${r}:${c}`);
+    }
+  } while (shortestMazePath(robot, home, walls, size) < 18);
+  return { gameId: "rescue", size, robot, home, walls, dir: Math.floor(Math.random() * 4), steps: 0, solved: false };
+}
+
+function shortestMazePath(start, home, walls, size = 8) {
+  const queue = [{ ...start, distance: 0 }];
+  const seen = new Set([`${start.r}:${start.c}`]);
+  while (queue.length) {
+    const current = queue.shift();
+    if (current.r === home.r && current.c === home.c) return current.distance;
+    [{ r: -1, c: 0 }, { r: 0, c: 1 }, { r: 1, c: 0 }, { r: 0, c: -1 }].forEach((delta) => {
+      const next = { r: current.r + delta.r, c: current.c + delta.c };
+      const key = `${next.r}:${next.c}`;
+      if (next.r < 0 || next.r >= size || next.c < 0 || next.c >= size || walls.has(key) || seen.has(key)) return;
+      seen.add(key);
+      queue.push({ ...next, distance: current.distance + 1 });
+    });
+  }
+  return -1;
+}
+
+function renderRescueGame(board, player, data) {
+  const controls = document.createElement("div");
+  controls.className = "robot-controls";
+  [["left", "左轉"], ["forward", "前進"], ["right", "右轉"]].forEach(([action, label]) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = label;
+    button.addEventListener("pointerdown", () => moveRobot(player, action));
+    controls.append(button);
+  });
+  const grid = document.createElement("div");
+  grid.className = "maze-grid";
+  grid.style.setProperty("--maze-size", data.size ?? 8);
+  for (let r = 0; r < (data.size ?? 8); r += 1) {
+    for (let c = 0; c < (data.size ?? 8); c += 1) {
+      const cell = document.createElement("div");
+      cell.className = "maze-cell";
+      if (data.walls.has(`${r}:${c}`)) cell.classList.add("wall");
+      if (data.home.r === r && data.home.c === c) cell.textContent = "🏠";
+      if (data.robot.r === r && data.robot.c === c) {
+        cell.classList.add("robot");
+        cell.dataset.dir = robotDirection(data.dir);
+        cell.textContent = "🤖";
+      }
+      grid.append(cell);
+    }
+  }
+  board.append(controls, grid);
+}
+
+function robotDirection(dir) {
+  return ["↑", "→", "↓", "←"][dir];
+}
+
+function moveRobot(player, action) {
+  const data = state.arcade.player[player];
+  if (!state.running || data.solved) return;
+  if (action === "left") data.dir = (data.dir + 3) % 4;
+  if (action === "right") data.dir = (data.dir + 1) % 4;
+  if (action === "forward") {
+    const delta = [{ r: -1, c: 0 }, { r: 0, c: 1 }, { r: 1, c: 0 }, { r: 0, c: -1 }][data.dir];
+    const next = { r: data.robot.r + delta.r, c: data.robot.c + delta.c };
+    const size = data.size ?? 8;
+    if (next.r >= 0 && next.r < size && next.c >= 0 && next.c < size && !data.walls.has(`${next.r}:${next.c}`)) data.robot = next;
+  }
+  data.steps += 1;
+  byPlayer(player, "Steps").textContent = `步數 ${data.steps}`;
+  if (data.robot.r === data.home.r && data.robot.c === data.home.c) solveArcadePlayer(player);
+  renderArcadeBoard(player);
+}
+
+function renderBitsGame(board, player, data) {
+  const target = data.questions[data.index] ?? 0;
+  const helper = document.createElement("div");
+  helper.className = "arcade-helper";
+  helper.innerHTML = data.correctFlash
+    ? `<strong>答對！</strong><small>${target} = ${data.lights.map((bit, index) => bit * [8, 4, 2, 1][index]).filter(Boolean).join(" + ") || 0}</small>`
+    : `<strong>${target}</strong><small>${data.index + 1} / 5</small>`;
+  const lights = document.createElement("div");
+  lights.className = "bits-grid";
+  [8, 4, 2, 1].forEach((weight, index) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `bit-light ${data.lights[index] ? "on" : ""}`;
+    button.innerHTML = `<strong>${weight}</strong><span>${data.lights[index]}</span>`;
+    button.disabled = data.correctFlash;
+    button.addEventListener("pointerdown", () => toggleBit(player, index));
+    lights.append(button);
+  });
+  board.append(helper, lights);
+}
+
+function toggleBit(player, index) {
+  const data = state.arcade.player[player];
+  if (!state.running || data.solved || data.correctFlash) return;
+  data.lights[index] = data.lights[index] ? 0 : 1;
+  data.steps += 1;
+  const value = data.lights.reduce((sum, bit, bitIndex) => sum + bit * [8, 4, 2, 1][bitIndex], 0);
+  if (value === data.questions[data.index]) {
+    data.correctFlash = true;
+    window.setTimeout(() => advanceBitsQuestion(player), 500);
+  }
+  byPlayer(player, "Steps").textContent = `步數 ${data.steps}`;
+  renderArcadeBoard(player);
+}
+
+function advanceBitsQuestion(player) {
+  const data = state.arcade.player[player];
+  if (!data || data.solved) return;
+  data.index += 1;
+  data.lights = [0, 0, 0, 0];
+  data.correctFlash = false;
+  if (data.index >= 5) solveArcadePlayer(player);
+  renderArcadeBoard(player);
+}
+
+function solveArcadePlayer(player) {
+  const data = state.arcade.player[player];
+  if (data.solved) return;
+  data.solved = true;
+  const bonus = Math.max(0, state.secondsLeft);
+  state.scores[player] += 50 + bonus;
+  byPlayer(player, "Score").textContent = state.scores[player];
+  byPlayer(player, "State").textContent = "完成！";
+  if (players.every((item) => state.arcade.player[item].solved)) endArcadeRound();
+}
+
+function endArcadeRound() {
+  if (!state.running) return;
+  state.running = false;
+  clearInterval(state.timerId);
+  const final = state.arcade.index >= arcadeGames.length - 1;
+  if (final) showArcadeFinal();
+  else showArcadeRoundResult();
+}
+
+function showArcadeRoundResult() {
+  els.resultTitle.textContent = "小關完成";
+  els.resultSummary.textContent = `總分：左 ${state.scores.left}：右 ${state.scores.right}`;
+  els.resultStats.innerHTML = `<div class="stat-box"><strong>下一關</strong>${arcadeTitle(arcadeGames[state.arcade.index + 1])}</div>`;
+  els.closeResultButton.textContent = "下一回合";
+  els.resultDialog.showModal();
+}
+
+function showArcadeFinal() {
+  const winner = state.scores.left === state.scores.right ? "平手" : state.scores.left > state.scores.right ? "左玩家獲勝" : "右玩家獲勝";
+  els.resultTitle.textContent = winner;
+  els.resultSummary.textContent = `總分：左玩家 ${state.scores.left}：右玩家 ${state.scores.right}`;
+  els.resultStats.innerHTML = `<div class="fireworks" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div>`;
+  els.closeResultButton.textContent = "回首頁";
+  els.resultDialog.showModal();
+}
+
+function nextArcadeRound() {
+  if (els.resultDialog.open) els.resultDialog.close();
+  if (!state.arcade || state.arcade.index >= arcadeGames.length - 1) {
+    showHome();
+    return;
+  }
+  clearInterval(state.timerId);
+  state.arcade.index += 1;
+  renderArcadeRound();
 }
 
 function recordRound() {
@@ -882,6 +1225,10 @@ function bestMethod() {
 }
 
 function nextRound() {
+  if (state.mode === "arcade") {
+    nextArcadeRound();
+    return;
+  }
   if (els.resultDialog.open) els.resultDialog.close();
   if (state.roundIndex >= TOTAL_ROUNDS - 1) return;
   clearInterval(state.timerId);
@@ -894,6 +1241,8 @@ function nextRound() {
 function resetGame() {
   clearInterval(state.timerId);
   cancelAllSortDrags();
+  state.mode = "treasure";
+  state.arcade = null;
   state.roundIndex = 0;
   state.secondsLeft = ROUND_SECONDS;
   state.running = false;
@@ -916,9 +1265,18 @@ function resetGame() {
   renderShell();
 }
 
-els.startButton.addEventListener("click", renderRound);
+els.treasureModeButton.addEventListener("click", startTreasureMode);
+els.arcadeModeButton.addEventListener("click", startArcadeMode);
+els.startButton.addEventListener("click", () => {
+  if (state.mode === "arcade") startArcadeMode();
+  else renderRound();
+});
 els.nextButton.addEventListener("click", nextRound);
-els.resetButton.addEventListener("click", resetGame);
+els.resetButton.addEventListener("click", () => {
+  if (state.mode === "arcade") startArcadeMode();
+  else resetGame();
+});
+els.homeButton.addEventListener("click", showHome);
 els.fullscreenButton.addEventListener("click", () => {
   if (document.body.classList.contains("play-mode") || document.fullscreenElement) {
     exitPlayMode();
@@ -938,7 +1296,11 @@ document.addEventListener("fullscreenchange", syncFullscreenButton);
 });
 els.closeResultButton.addEventListener("click", () => {
   els.resultDialog.close();
+  if (state.mode === "arcade") {
+    state.arcade && state.arcade.index >= arcadeGames.length - 1 ? showHome() : nextArcadeRound();
+    return;
+  }
   state.roundIndex >= TOTAL_ROUNDS - 1 ? resetGame() : nextRound();
 });
 
-resetGame();
+showHome();

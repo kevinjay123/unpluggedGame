@@ -8,6 +8,16 @@
   </head>
   <body>
     <main class="game-shell" aria-live="polite">
+      <section id="homeMenu" class="home-menu">
+        <div class="home-panel">
+          <h1>Unplugged Duel</h1>
+          <p>選擇雙人競技模式</p>
+          <div class="home-actions">
+            <button id="treasureModeButton" class="primary-action" type="button">Treasure Search Duel</button>
+            <button id="arcadeModeButton" class="ghost-action" type="button">程式思維闖關</button>
+          </div>
+        </div>
+      </section>
       <section class="top-strip">
         <div class="brand-lockup">
           <div class="gem-mark" aria-hidden="true">
@@ -80,6 +90,7 @@
         <button id="startButton" class="primary-action" type="button">開始比賽</button>
         <button id="nextButton" class="ghost-action" type="button" disabled>下一回合</button>
         <button id="resetButton" class="ghost-action" type="button">重新開始</button>
+        <button id="homeButton" class="ghost-action" type="button">回首頁</button>
         <button id="fullscreenButton" class="ghost-action" type="button">全螢幕</button>
       </section>
     </main>

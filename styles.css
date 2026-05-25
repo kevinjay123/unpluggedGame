@@ -79,6 +79,44 @@ button {
     max(12px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
 }
 
+.home-active .top-strip,
+.home-active .arena,
+.home-active .control-band {
+  display: none;
+}
+
+.home-menu {
+  display: grid;
+  place-items: center;
+  min-height: 100dvh;
+}
+
+.home-menu[hidden] {
+  display: none;
+}
+
+.home-panel {
+  display: grid;
+  gap: 18px;
+  width: min(720px, 100%);
+  padding: 28px;
+  border: 1px solid rgba(216, 222, 217, 0.92);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: var(--shadow);
+  text-align: center;
+}
+
+.home-panel h1 {
+  font-size: clamp(2rem, 5vw, 4rem);
+}
+
+.home-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
 .top-strip {
   display: grid;
   grid-template-columns: minmax(230px, 0.8fr) minmax(320px, 1.45fr) minmax(104px, 0.32fr);
@@ -294,6 +332,142 @@ h1 {
   grid-template-columns: repeat(15, minmax(30px, 1fr));
   grid-template-rows: repeat(4, minmax(60px, 1fr));
   align-items: stretch;
+}
+
+.board.arcade {
+  align-content: center;
+  justify-items: center;
+  overflow: auto;
+}
+
+.arcade-helper {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 4px;
+  width: 100%;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f8fbfa;
+  text-align: center;
+}
+
+.arcade-helper strong {
+  font-size: clamp(1.2rem, 3vw, 2rem);
+}
+
+.pixel-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(44px, 1fr));
+  gap: 6px;
+  width: min(100%, 430px);
+}
+
+.pixel-cell {
+  aspect-ratio: 1;
+  border: 2px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: #172126;
+  font-weight: 1000;
+  font-size: 1.1rem;
+}
+
+.pixel-cell.on {
+  background: #172126;
+  color: #fff;
+}
+
+.pixel-cell.done {
+  border-color: var(--mint);
+  box-shadow: inset 0 0 0 4px rgba(11, 167, 123, 0.2);
+}
+
+.robot-controls {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  width: min(100%, 430px);
+}
+
+.robot-controls button {
+  min-height: 56px;
+  border-radius: 8px;
+  background: #172126;
+  color: #fff;
+  font-weight: 1000;
+}
+
+.maze-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--maze-size, 8), minmax(28px, 1fr));
+  gap: 4px;
+  width: min(100%, 430px);
+}
+
+.maze-cell {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  font-weight: 1000;
+  font-size: clamp(1rem, 2.2vw, 1.55rem);
+}
+
+.maze-cell.wall {
+  background: #172126;
+}
+
+.maze-cell.robot {
+  background: #e9fbff;
+  box-shadow: inset 0 0 0 2px rgba(0, 166, 166, 0.22);
+}
+
+.maze-cell.robot::after {
+  content: attr(data-dir);
+  position: absolute;
+  right: 2px;
+  bottom: 1px;
+  display: grid;
+  place-items: center;
+  width: 1.2em;
+  height: 1.2em;
+  border-radius: 50%;
+  background: #172126;
+  color: #fff;
+  font-size: 0.55em;
+  line-height: 1;
+}
+
+.bits-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  width: min(100%, 520px);
+}
+
+.bit-light {
+  display: grid;
+  place-items: center;
+  min-height: 130px;
+  border: 2px solid var(--line);
+  border-radius: 8px;
+  background: #f0f4f3;
+  color: var(--ink);
+  font-weight: 1000;
+}
+
+.bit-light.on {
+  border-color: var(--sun);
+  background: #fff4b8;
+  box-shadow: 0 0 22px rgba(242, 201, 76, 0.7);
+}
+
+.bit-light strong {
+  font-size: 2rem;
 }
 
 .tile,
@@ -1081,6 +1255,73 @@ button:disabled {
 
   .tree-node small {
     font-size: 0.52rem;
+  }
+
+  .home-menu {
+    min-height: calc(100dvh - 20px);
+  }
+
+  .home-panel {
+    padding: 16px;
+  }
+
+  .home-panel h1 {
+    font-size: 1.7rem;
+  }
+
+  .home-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .arcade-helper {
+    padding: 6px;
+  }
+
+  .arcade-helper strong {
+    font-size: 1rem;
+  }
+
+  .pixel-grid {
+    grid-template-columns: repeat(6, minmax(28px, 1fr));
+    gap: 3px;
+    width: min(100%, 270px);
+  }
+
+  .pixel-cell {
+    font-size: 0.78rem;
+    border-width: 1px;
+  }
+
+  .robot-controls {
+    width: min(100%, 300px);
+    gap: 4px;
+  }
+
+  .robot-controls button {
+    min-height: 38px;
+    font-size: 0.78rem;
+  }
+
+  .maze-grid {
+    width: min(100%, 300px);
+    gap: 2px;
+  }
+
+  .maze-cell {
+    font-size: 0.72rem;
+  }
+
+  .bits-grid {
+    width: min(100%, 320px);
+    gap: 5px;
+  }
+
+  .bit-light {
+    min-height: 72px;
+  }
+
+  .bit-light strong {
+    font-size: 1.25rem;
   }
 
   .control-band {
