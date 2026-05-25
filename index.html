@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Treasure Search Duel</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="game-shell" aria-live="polite">
+      <section class="top-strip">
+        <div class="brand-lockup">
+          <div class="gem-mark" aria-hidden="true">
+            <svg viewBox="0 0 64 64" role="img">
+              <path d="M12 22 24 8h16l12 14-20 34Z" fill="#00a6a6" />
+              <path d="M12 22h40L32 56Z" fill="#13c5a3" />
+              <path d="M24 8 32 22 40 8ZM12 22l20 0L24 8ZM32 22h20L40 8Z" fill="#f7f06d" />
+            </svg>
+          </div>
+          <div>
+            <h1>Treasure Search Duel</h1>
+            <p>雙人尋寶搜尋賽</p>
+          </div>
+        </div>
+        <div class="mission-card">
+          <span id="roundLabel">Round 1 / 10</span>
+          <strong id="missionText">準備開始尋寶！</strong>
+          <small id="methodText">一張一張翻</small>
+        </div>
+        <div class="timer-card">
+          <span>時間</span>
+          <strong id="timerText">15</strong>
+        </div>
+      </section>
+
+      <section class="arena" aria-label="雙人對戰區">
+        <article class="player-panel player-left" data-player="left">
+          <header class="player-head">
+            <div>
+              <h2>左玩家</h2>
+              <p id="leftState">等待開始</p>
+            </div>
+            <div class="score-pill">
+              <span>分數</span>
+              <strong id="leftScore">0</strong>
+            </div>
+          </header>
+          <div id="leftBoard" class="board" aria-label="左玩家搜尋區"></div>
+          <footer class="player-foot">
+            <span id="leftSteps">步數 0</span>
+            <span id="leftStreak">連擊 0</span>
+          </footer>
+        </article>
+
+        <aside class="center-rail" aria-hidden="true">
+          <div class="versus">VS</div>
+          <div class="round-track" id="roundTrack"></div>
+        </aside>
+
+        <article class="player-panel player-right" data-player="right">
+          <header class="player-head">
+            <div>
+              <h2>右玩家</h2>
+              <p id="rightState">等待開始</p>
+            </div>
+            <div class="score-pill">
+              <span>分數</span>
+              <strong id="rightScore">0</strong>
+            </div>
+          </header>
+          <div id="rightBoard" class="board" aria-label="右玩家搜尋區"></div>
+          <footer class="player-foot">
+            <span id="rightSteps">步數 0</span>
+            <span id="rightStreak">連擊 0</span>
+          </footer>
+        </article>
+      </section>
+
+      <section class="control-band">
+        <button id="startButton" class="primary-action" type="button">開始比賽</button>
+        <button id="nextButton" class="ghost-action" type="button" disabled>下一回合</button>
+        <button id="resetButton" class="ghost-action" type="button">重新開始</button>
+      </section>
+    </main>
+
+    <dialog id="resultDialog" class="result-dialog">
+      <div class="result-content">
+        <h2 id="resultTitle">回合完成</h2>
+        <p id="resultSummary"></p>
+        <div id="resultStats" class="result-stats"></div>
+        <button id="closeResultButton" class="primary-action" type="button">繼續</button>
+      </div>
+    </dialog>
+
+    <script src="game.js"></script>
+  </body>
+</html>
