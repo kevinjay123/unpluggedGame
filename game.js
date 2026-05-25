@@ -135,15 +135,36 @@ function startArcadeMode() {
   state.mode = "arcade";
   state.roundIndex = 0;
   state.secondsLeft = 60;
-  state.running = true;
+  state.running = false;
   state.scores = { left: 0, right: 0 };
   state.streaks = { left: 0, right: 0 };
   state.history = [];
   state.arcade = { index: 0, player: {} };
-  els.startButton.disabled = true;
-  els.nextButton.disabled = false;
+  els.startButton.disabled = false;
+  els.nextButton.disabled = true;
   els.closeResultButton.textContent = "下一回合";
-  renderArcadeRound();
+  els.roundLabel.textContent = `Game 1 / ${arcadeGames.length}`;
+  els.methodText.textContent = "程式思維闖關";
+  els.missionText.textContent = "準備開始闖關！";
+  els.timerText.textContent = state.secondsLeft;
+
+  els.roundTrack.innerHTML = "";
+  for (let i = 0; i < arcadeGames.length; i += 1) {
+    const dot = document.createElement("span");
+    dot.className = "round-dot";
+    if (i === 0) dot.classList.add("active");
+    els.roundTrack.append(dot);
+  }
+
+  players.forEach((player) => {
+    byPlayer(player, "Score").textContent = state.scores[player];
+    byPlayer(player, "Streak").textContent = `完成 0 / ${arcadeGames.length}`;
+    byPlayer(player, "Steps").textContent = "步數 0";
+    byPlayer(player, "State").textContent = "等待開始";
+    const board = byPlayer(player, "Board");
+    board.innerHTML = "";
+    board.className = "board arcade";
+  });
 }
 
 async function toggleFullscreen() {
@@ -867,6 +888,14 @@ function renderArcadeRound() {
   els.timerText.textContent = state.secondsLeft;
   els.startButton.disabled = true;
   els.nextButton.disabled = state.arcade.index >= arcadeGames.length - 1;
+  els.roundTrack.innerHTML = "";
+  for (let i = 0; i < arcadeGames.length; i += 1) {
+    const dot = document.createElement("span");
+    dot.className = "round-dot";
+    if (i < state.arcade.index) dot.classList.add("done");
+    if (i === state.arcade.index) dot.classList.add("active");
+    els.roundTrack.append(dot);
+  }
   players.forEach((player) => {
     byPlayer(player, "Score").textContent = state.scores[player];
     byPlayer(player, "Streak").textContent = `完成 ${state.arcade.index} / ${arcadeGames.length}`;
@@ -1268,7 +1297,7 @@ function resetGame() {
 els.treasureModeButton.addEventListener("click", startTreasureMode);
 els.arcadeModeButton.addEventListener("click", startArcadeMode);
 els.startButton.addEventListener("click", () => {
-  if (state.mode === "arcade") startArcadeMode();
+  if (state.mode === "arcade") renderArcadeRound();
   else renderRound();
 });
 els.nextButton.addEventListener("click", nextRound);
