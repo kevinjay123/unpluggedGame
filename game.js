@@ -56,7 +56,7 @@ const state = {
   streaks: { left: 0, right: 0 },
   playerRound: {},
   history: [],
-  sortDrag: null,
+  sortDrags: new Map(),
 };
 
 const els = {
@@ -302,7 +302,7 @@ function renderBinaryBoard(board, player) {
   const values = state.round.playerData[player].values;
   const sortedValues = [...values].sort((a, b) => b - a);
   const correctCount = values.filter((value, index) => value === sortedValues[index]).length;
-  const drag = state.sortDrag?.player === player ? state.sortDrag : null;
+  const drag = getPlayerSortDrag(player);
   const helper = document.createElement("div");
   helper.className = "binary-helper";
   helper.innerHTML = `<strong>由大到小排序：${correctCount} / 10 已在正確位置</strong><small>按住數字卡拖曳，放到空位完成排序。</small>`;
@@ -348,23 +348,31 @@ function getSortDisplayItems(values, drag) {
 function renderHashBoard(board, player) {
   const playerState = state.playerRound[player];
   const playerData = state.round.playerData[player];
+  const activeGroup = playerData.groups.find((group) => group.key === playerState.activeBucket);
+  if (activeGroup) {
+    const tray = document.createElement("div");
+    tray.className = "bucket-tray";
+    tray.innerHTML = `${colorSwatch(activeGroup)}<div class="bucket-items">${playerData.groupItems[activeGroup.key]
+      .map((item) => `<button type="button" data-item="${item}">${item}</button>`)
+      .join("")}</div>`;
+    tray.querySelectorAll("[data-item]").forEach((itemButton) => {
+      itemButton.addEventListener("pointerdown", (event) => {
+        event.stopPropagation();
+        chooseHashItem(player, activeGroup.key, Number(itemButton.dataset.item));
+      });
+    });
+    board.append(tray);
+  }
+
   playerData.groups.forEach((group) => {
     const open = playerState.activeBucket === group.key;
-    const groupItems = playerData.groupItems;
     const bucketSolved = playerState.path.includes(`${group.key}:${state.round.target}`);
-    const label = open
-      ? `${colorSwatch(group)}<div class="bucket-items">${groupItems[
-          group.key
-        ]
-          .map((item) => `<button type="button" data-item="${item}">${item}</button>`)
-          .join("")}</div>`
-      : colorSwatch(group);
     const bucket = document.createElement("div");
     bucket.className = "bucket";
     bucket.setAttribute("role", "button");
     bucket.setAttribute("aria-label", group.name);
     bucket.tabIndex = 0;
-    bucket.innerHTML = label;
+    bucket.innerHTML = colorSwatch(group);
     bucket.addEventListener("pointerdown", () => openHashBucket(player, group.key));
     bucket.addEventListener("keydown", (event) => {
       if (event.key === "Enter" || event.key === " ") openHashBucket(player, group.key);
@@ -372,12 +380,6 @@ function renderHashBoard(board, player) {
     if (open) bucket.classList.add("open");
     if (bucketSolved) bucket.classList.add("correct");
     if (playerState.path.includes(group.key) && group.key !== state.round.targetGroup.key) bucket.classList.add("wrong");
-    bucket.querySelectorAll("[data-item]").forEach((itemButton) => {
-      itemButton.addEventListener("pointerdown", (event) => {
-        event.stopPropagation();
-        chooseHashItem(player, group.key, Number(itemButton.dataset.item));
-      });
-    });
     board.append(bucket);
   });
 }
@@ -436,30 +438,34 @@ function chooseLinear(player, index) {
 function startSortDrag(event, player, index) {
   if (!canChoose(player)) return;
   event.preventDefault();
+  const existingDrag = getPlayerSortDrag(player);
+  if (existingDrag) cancelSortDrag(existingDrag.pointerId);
+
   const round = state.playerRound[player];
   const value = state.round.playerData[player].values[index];
   round.sortDragIndex = index;
-  state.sortDrag = {
+  const drag = {
     player,
     fromIndex: index,
     overIndex: index,
     pointerId: event.pointerId,
     ghost: makeDragGhost(event.currentTarget, value),
   };
+  state.sortDrags.set(event.pointerId, drag);
   guide(player, "拖到空位放開");
   renderBoard(player);
-  moveDragGhost(event);
+  moveDragGhost(event, drag);
 
-  window.addEventListener("pointermove", moveSortDrag);
-  window.addEventListener("pointerup", finishSortDrag, { once: true });
-  window.addEventListener("pointercancel", cancelSortDrag, { once: true });
+  window.addEventListener("pointermove", moveSortDrag, { passive: false });
+  window.addEventListener("pointerup", finishSortDrag);
+  window.addEventListener("pointercancel", cancelSortDrag);
 }
 
 function moveSortDrag(event) {
-  const drag = state.sortDrag;
-  if (!drag || event.pointerId !== drag.pointerId) return;
+  const drag = state.sortDrags.get(event.pointerId);
+  if (!drag) return;
   event.preventDefault();
-  moveDragGhost(event);
+  moveDragGhost(event, drag);
 
   const nextOverIndex = getSortInsertIndex(event.clientX, event.clientY, drag.player);
   if (nextOverIndex !== drag.overIndex) {
@@ -469,16 +475,16 @@ function moveSortDrag(event) {
 }
 
 function finishSortDrag(event) {
-  const drag = state.sortDrag;
-  if (!drag || event.pointerId !== drag.pointerId) return;
+  const drag = state.sortDrags.get(event.pointerId);
+  if (!drag) return;
   event.preventDefault();
+  state.sortDrags.delete(event.pointerId);
   cleanupSortDragListeners();
   const player = drag.player;
   const round = state.playerRound[player];
   const first = drag.fromIndex;
   const second = getSortInsertIndex(event.clientX, event.clientY, player);
   round.sortDragIndex = null;
-  state.sortDrag = null;
   removeDragGhost(drag);
   if (!state.running) {
     renderBoard(player);
@@ -516,22 +522,25 @@ function isDescending(values) {
   return values.every((value, index) => index === 0 || values[index - 1] >= value);
 }
 
-function cancelSortDrag(player) {
-  const drag = state.sortDrag;
-  cleanupSortDragListeners();
-  if (drag) {
-    removeDragGhost(drag);
-    const dragPlayer = drag.player;
-    state.sortDrag = null;
-    if (state.playerRound[dragPlayer]) {
-      state.playerRound[dragPlayer].sortDragIndex = null;
-      renderBoard(dragPlayer);
-    }
-    return;
+function cancelSortDrag(eventOrPointerId) {
+  const pointerId = typeof eventOrPointerId === "number" ? eventOrPointerId : eventOrPointerId?.pointerId;
+  const drag = state.sortDrags.get(pointerId);
+  if (!drag) return;
+  state.sortDrags.delete(pointerId);
+  removeDragGhost(drag);
+  if (state.playerRound[drag.player]) {
+    state.playerRound[drag.player].sortDragIndex = null;
+    renderBoard(drag.player);
   }
-  if (!state.playerRound[player]) return;
-  state.playerRound[player].sortDragIndex = null;
-  renderBoard(player);
+  cleanupSortDragListeners();
+}
+
+function getPlayerSortDrag(player) {
+  return [...state.sortDrags.values()].find((drag) => drag.player === player) ?? null;
+}
+
+function cancelAllSortDrags() {
+  [...state.sortDrags.keys()].forEach(cancelSortDrag);
 }
 
 function getSortInsertIndex(x, y, player) {
@@ -567,8 +576,8 @@ function makeDragGhost(source, value) {
   return ghost;
 }
 
-function moveDragGhost(event) {
-  const ghost = state.sortDrag?.ghost;
+function moveDragGhost(event, drag = state.sortDrags.get(event.pointerId)) {
+  const ghost = drag?.ghost;
   if (!ghost) return;
   ghost.style.transform = `translate(${event.clientX}px, ${event.clientY}px) translate(-50%, -50%)`;
 }
@@ -578,7 +587,10 @@ function removeDragGhost(drag) {
 }
 
 function cleanupSortDragListeners() {
+  if (state.sortDrags.size > 0) return;
   window.removeEventListener("pointermove", moveSortDrag);
+  window.removeEventListener("pointerup", finishSortDrag);
+  window.removeEventListener("pointercancel", cancelSortDrag);
 }
 
 function openHashBucket(player, key) {
@@ -812,9 +824,7 @@ function nextRound() {
   if (els.resultDialog.open) els.resultDialog.close();
   if (state.roundIndex >= TOTAL_ROUNDS - 1) return;
   clearInterval(state.timerId);
-  removeDragGhost(state.sortDrag);
-  cleanupSortDragListeners();
-  state.sortDrag = null;
+  cancelAllSortDrags();
   state.running = false;
   state.roundIndex += 1;
   renderRound();
@@ -822,8 +832,7 @@ function nextRound() {
 
 function resetGame() {
   clearInterval(state.timerId);
-  removeDragGhost(state.sortDrag);
-  cleanupSortDragListeners();
+  cancelAllSortDrags();
   state.roundIndex = 0;
   state.secondsLeft = ROUND_SECONDS;
   state.running = false;
@@ -832,7 +841,7 @@ function resetGame() {
   state.streaks = { left: 0, right: 0 };
   state.playerRound = {};
   state.history = [];
-  state.sortDrag = null;
+
   els.startButton.disabled = false;
   els.nextButton.disabled = true;
   els.closeResultButton.textContent = "繼續";
