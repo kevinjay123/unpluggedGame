@@ -470,6 +470,32 @@ h1 {
   font-size: 2rem;
 }
 
+.bits-complete {
+  display: grid;
+  place-items: center;
+  gap: 10px;
+  width: min(100%, 520px);
+  min-height: 260px;
+  border: 2px solid var(--mint);
+  border-radius: 8px;
+  background: #dcfff2;
+  text-align: center;
+}
+
+.bits-complete strong {
+  font-size: clamp(2rem, 5vw, 4rem);
+}
+
+.bits-complete span {
+  font-weight: 1000;
+  font-size: clamp(1.25rem, 3vw, 2rem);
+}
+
+.bits-complete small {
+  color: var(--muted);
+  font-weight: 900;
+}
+
 .tile,
 .bucket,
 .tree-node {

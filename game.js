@@ -1,5 +1,5 @@
 const ROUND_SECONDS = 24;
-const TOTAL_ROUNDS = 10;
+const TOTAL_ROUNDS = 8;
 const players = ["left", "right"];
 const playerNames = { left: "左玩家", right: "右玩家" };
 const HASH_GROUPS = [
@@ -1085,6 +1085,14 @@ function moveRobot(player, action) {
 }
 
 function renderBitsGame(board, player, data) {
+  if (data.solved) {
+    const complete = document.createElement("div");
+    complete.className = "bits-complete";
+    complete.innerHTML = `<strong>完成！</strong><span>5 / 5 題</span><small>步數 ${data.steps}</small>`;
+    board.append(complete);
+    return;
+  }
+
   const target = data.questions[data.index] ?? 0;
   const helper = document.createElement("div");
   helper.className = "arcade-helper";
